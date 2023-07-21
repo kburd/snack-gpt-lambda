@@ -1,31 +1,29 @@
 package com.kburd.snackgpt;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import org.json.JSONObject;
 
 public class SnackGpt {
 
-    public Recipe getRecipe(RecipeRequest recipeRequest) throws Exception {
+    public String getRecipe(JSONObject recipeRequest) {
 
-        String prompt, response;
-        Recipe recipe;
+        String query, prompt, response;
 
-        prompt = buildPrompt(recipeRequest.getQuery());
-        response = OpenAiClient.promptOpenAI(prompt);
-        recipe = mapResponseToRecipe(response);
+        try {
+            query = recipeRequest.getString("query");
+            prompt = buildPrompt(query);
+            response = OpenAiClient.promptOpenAI(prompt);
+        }
+        catch (Exception e){
+            response = e.toString();
+        }
 
-        return recipe;
+        return response;
 
     }
 
     private String buildPrompt(String query){
         return "Generate a recipe for '" + query + "' in the following json format: " +
                 "{name: string, ingredients: string[], steps: string[]}";
-    }
-
-    private Recipe mapResponseToRecipe(String response) throws JsonProcessingException {
-        ObjectMapper mapper = new ObjectMapper();
-        return mapper.readValue(response, Recipe.class);
     }
 
 }

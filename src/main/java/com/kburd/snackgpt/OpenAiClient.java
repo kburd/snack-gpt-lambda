@@ -1,73 +1,75 @@
 package com.kburd.snackgpt;
 
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.util.EntityUtils;
 import org.json.JSONObject;
+import java.io.BufferedReader;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.ProtocolException;
+import java.net.URL;
+import java.util.stream.Collectors;
 
 public class OpenAiClient {
 
-    static final private String API_KEY = "TODO";
+    static final private String OPEN_AI_API = "https://api.openai.com/v1/chat/completions";
     static final private String MODEL_ID = "gpt-3.5-turbo";
 
-    public static String promptOpenAI(String prompt) {
+    public static String promptOpenAI(String prompt) throws Exception {
 
-        StringBuilder responseString = new StringBuilder();
-
-        // Create an HttpClient instance
-        CloseableHttpClient httpClient = HttpClients.createDefault();
-
-        // Create a POST request to the OpenAI API endpoint
-        HttpPost httpPost = new HttpPost("https://api.openai.com/v1/chat/completions");
-
-        // Set the request headers
-        httpPost.setHeader("Content-Type", "application/json");
-        httpPost.setHeader("Authorization", "Bearer " + API_KEY);
-
-        // Set the request body
-        String requestBody = "{" +
-                "\"model\": \"" + MODEL_ID + "\"," +
-                "\"messages\": [{\"role\": \"user\", \"content\": \"" + prompt + "\"}]," +
-                "\"temperature\": 0.7" +
-                "}";
-        httpPost.setEntity(new StringEntity(requestBody, "UTF-8"));
+        StringBuilder output = new StringBuilder();
 
         try {
-            // Execute the request
-            HttpResponse response = httpClient.execute(httpPost);
 
-            // Get the response entity
-            HttpEntity entity = response.getEntity();
+            URL url = new URL(OPEN_AI_API);
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
 
-            if (entity != null) {
+            connection.setRequestMethod("POST");
+            connection.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+            connection.setRequestProperty("Authorization", "Bearer " + AwsSecretsManagerClient.getSecret());
+            connection.setDoOutput(true);
 
-                // Convert the response entity to a string
-                JSONObject body = new JSONObject(EntityUtils.toString(entity, "UTF-8"));
+            DataOutputStream outputStream = new DataOutputStream(connection.getOutputStream());
+            outputStream.writeBytes("{" +
+                    "\"model\": \"" + MODEL_ID + "\"," +
+                    "\"messages\": [{\"role\": \"user\", \"content\": \"" + prompt + "\"}]," +
+                    "\"temperature\": 0.7" +
+                    "}");
+            outputStream.flush();
+            outputStream.close();
+
+            if (connection.getResponseCode() == HttpURLConnection.HTTP_OK) {
+
+                BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+                String response = reader.lines().collect(Collectors.joining(""));
+                reader.close();
+
+                JSONObject body = new JSONObject(response);
                 JSONObject choiceObj;
-
-                for(Object choice : body.getJSONArray("choices")){
+                for (Object choice : body.getJSONArray("choices")) {
                     choiceObj = (JSONObject) choice;
-                    responseString.append(choiceObj.getJSONObject("message").getString("content")).append("\n");
+                    output.append(choiceObj.getJSONObject("message").getString("content")).append("\n");
                 }
 
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        } finally {
-            // Close the HttpClient
-            try {
-                httpClient.close();
-            } catch (Exception e) {
-                e.printStackTrace();
+            } else {
+                throw new Exception("Open AI Call Failed with Status " + connection.getResponseCode());
             }
         }
 
-        return responseString.toString();
+        catch (MalformedURLException | ProtocolException e){
+            throw new Exception("Failed to Make Request to OpenAI");
+        }
+
+        catch (IOException e){
+            throw new Exception(e.getMessage());
+        }
+
+        catch (NullPointerException e){
+            throw new Exception("Failed to Parse Response from OpenAI");
+        }
+
+        return output.toString();
 
     }
 
