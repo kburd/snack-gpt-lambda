@@ -13,26 +13,24 @@ import java.util.stream.Collectors;
 
 public class OpenAiClient {
 
-    static final private String OPEN_AI_API = "https://api.openai.com/v1/chat/completions";
-    static final private String MODEL_ID = "gpt-3.5-turbo";
-
     public static String promptOpenAI(String prompt) throws Exception {
 
         StringBuilder output = new StringBuilder();
 
         try {
 
-            URL url = new URL(OPEN_AI_API);
+            URL url = new URL("https://api.openai.com/v1/chat/completions");
+            String apiKey = AwsSecretsManagerClient.getSecret();
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
 
             connection.setRequestMethod("POST");
             connection.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
-            connection.setRequestProperty("Authorization", "Bearer " + AwsSecretsManagerClient.getSecret());
+            connection.setRequestProperty("Authorization", "Bearer " + apiKey);
             connection.setDoOutput(true);
 
             DataOutputStream outputStream = new DataOutputStream(connection.getOutputStream());
             outputStream.writeBytes("{" +
-                    "\"model\": \"" + MODEL_ID + "\"," +
+                    "\"model\": \"gpt-3.5-turbo\"," +
                     "\"messages\": [{\"role\": \"user\", \"content\": \"" + prompt + "\"}]," +
                     "\"temperature\": 0.7" +
                     "}");
@@ -53,7 +51,7 @@ public class OpenAiClient {
                 }
 
             } else {
-                throw new Exception("Open AI Call Failed with Status " + connection.getResponseCode());
+                throw new Exception("Open AI Call Failed with Status ");
             }
         }
 

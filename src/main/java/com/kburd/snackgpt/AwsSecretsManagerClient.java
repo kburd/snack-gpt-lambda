@@ -1,5 +1,6 @@
 package com.kburd.snackgpt;
 
+ import org.json.JSONObject;
  import software.amazon.awssdk.regions.Region;
  import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
  import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueRequest;
@@ -17,11 +18,9 @@ public class AwsSecretsManagerClient {
                 .secretId(secretName)
                 .build();
 
-        try {
-            return client.getSecretValue(getSecretValueRequest).secretString();
-        } catch (Exception e) {
-            throw e;
-        }
+        JSONObject secretObject = new JSONObject(client.getSecretValue(getSecretValueRequest).secretString());
+
+        return secretObject.getString(secretName);
 
     }
 }

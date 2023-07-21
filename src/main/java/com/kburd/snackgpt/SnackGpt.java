@@ -1,20 +1,33 @@
 package com.kburd.snackgpt;
 
-import org.json.JSONObject;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.kburd.snackgpt.models.Recipe;
+import com.kburd.snackgpt.models.RecipeRequest;
+import com.kburd.snackgpt.models.SnackGptResponse;
 
 public class SnackGpt {
 
-    public String getRecipe(JSONObject recipeRequest) {
+    private final static ObjectMapper mapper = new ObjectMapper();
 
-        String query, prompt, response;
+    public SnackGptResponse getRecipe(RecipeRequest recipeRequest) {
+
+        String prompt, openAiResponse;
+        SnackGptResponse response;
 
         try {
-            query = recipeRequest.getString("query");
-            prompt = buildPrompt(query);
-            response = OpenAiClient.promptOpenAI(prompt);
+            prompt = buildPrompt(recipeRequest.getQuery());
+            openAiResponse = OpenAiClient.promptOpenAI(prompt);
+            response = SnackGptResponse.builder()
+                    .recipeFound(true)
+                    .recipe(mapper.readValue(openAiResponse, Recipe.class))
+                    .build();
+
         }
         catch (Exception e){
-            response = e.toString();
+            response = SnackGptResponse.builder()
+                    .recipeFound(false)
+                    .exception(e.getMessage())
+                    .build();
         }
 
         return response;
